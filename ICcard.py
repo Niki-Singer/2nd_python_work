@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 # 1. 读取数据
 # 针对你提供的报错（列数为1），尝试显式指定分隔符并处理可能的编码问题
@@ -52,3 +53,80 @@ else:
     print("\n未检测到缺失值。")
 
 print("\n--- 任务1 预处理完成 ---")
+
+# 设置绘图中文字体（解决Matplotlib中文乱码问题）
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+
+# --- 承接任务1的预处理结果 (假设 df 已加载并完成 hour 列提取) ---
+
+# 任务2 (a)：早晚时段刷卡量统计（使用 numpy）
+# 仅统计刷卡类型=0（上车刷卡）的记录
+pickup_df = df[df['刷卡类型'] == 0].copy()
+total_pickups = len(pickup_df)
+
+# 使用 numpy.where 或布尔索引提取 hour 数组
+hours_arr = pickup_df['hour'].values
+
+# 1. 统计时段数量
+# 早峰前时段：hour < 7
+early_morning_mask = hours_arr < 7
+early_morning_count = np.sum(early_morning_mask)
+
+# 深夜时段：hour >= 22
+late_night_mask = hours_arr >= 22
+late_night_count = np.sum(late_night_mask)
+
+# 2. 计算并打印百分比
+early_pct = (early_morning_count / total_pickups) * 100
+late_pct = (late_night_count / total_pickups) * 100
+
+print("\n--- 任务2(a) 早晚时段刷卡量统计 ---")
+print(f"全天总刷卡量(上车): {total_pickups} 次")
+print(f"早峰前时段 (< 07:00) 刷卡量: {early_morning_count} 次, 占比: {early_pct:.2f}%")
+print(f"深夜时段 (>= 22:00) 刷卡量: {late_night_count} 次, 占比: {late_pct:.2f}%")
+
+# 任务2 (b)：24小时刷卡量分布可视化
+# 3. 准备绘图数据
+hour_counts = pickup_df['hour'].value_counts().sort_index()
+# 补全可能缺失的小时（确保0-23都有数据，即使为0）
+full_hours = pd.Series(0, index=np.arange(24))
+hour_counts = (full_hours + hour_counts).fillna(0)
+
+# 定义颜色逻辑：早峰前和深夜高亮
+colors = []
+for h in range(24):
+    if h < 7:
+        colors.append('salmon')    # 早峰前颜色
+    elif h >= 22:
+        colors.append('steelblue') # 深夜颜色
+    else:
+        colors.append('lightgray') # 其他时段颜色
+
+# 开始绘图
+plt.figure(figsize=(10, 6))
+bars = plt.bar(hour_counts.index, hour_counts.values, color=colors, edgecolor='black', alpha=0.8)
+
+# 设置图例（手动创建代理图例）
+from matplotlib.patches import Patch
+legend_elements = [
+    Patch(facecolor='salmon', label='早峰前 (<7h)'),
+    Patch(facecolor='steelblue', label='深夜 (≥22h)'),
+    Patch(facecolor='lightgray', label='普通时段')
+]
+plt.legend(handles=legend_elements)
+
+# 设置坐标轴与标题
+plt.title('公交IC卡24小时刷卡量分布图', fontsize=14)
+plt.xlabel('小时', fontsize=12)
+plt.ylabel('刷卡量（次）', fontsize=12)
+plt.xticks(np.arange(0, 24, 2))  # x轴步长为2
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+# 保存图像
+plt.tight_layout()
+plt.savefig('hour_distribution.png', dpi=150)
+print("\n--- 任务2(b) 可视化图表已保存为 hour_distribution.png ---")
+
+# 展示图像（可选）
+plt.show()
