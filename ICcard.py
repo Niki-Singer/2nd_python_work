@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 # 1. 读取数据
 # 针对你提供的报错（列数为1），尝试显式指定分隔符并处理可能的编码问题
@@ -256,3 +257,58 @@ print(f"最大15分钟刷卡量（{max_15min_start.strftime('%H:%M')}~{max_15min
 print(f"PHF15 = {peak_hour_count} / ( 4 × {max_15min_val}) = {phf15:.4f}")
 
 # --- 任务4 完成 ---
+# --- 任务 5：线路驾驶员信息批量导出 (修正版) ---
+
+print("\n--- 任务 5：线路驾驶员信息批量导出 ---")
+
+# 1. 定义目标文件夹名称
+output_folder = "线路驾驶员信息"
+
+# 2. 创建文件夹（如果不存在）
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+    print(f"文件夹 '{output_folder}' 创建成功。")
+else:
+    print(f"文件夹 '{output_folder}' 已存在。")
+
+# 3. 筛选线路号在 1101 至 1120 之间的所有记录
+# 使用布尔索引进行范围筛选
+target_routes = df[(df['线路号'] >= 1101) & (df['线路号'] <= 1120)].copy()
+
+# 获取唯一线路列表并排序
+route_list = sorted(target_routes['线路号'].unique())
+
+print(f"共识别到符合范围的线路共 {len(route_list)} 条，准备开始导出...")
+
+# 4. 循环处理每条线路并写入文件
+for route_id in route_list:
+    # 筛选当前线路的数据
+    current_route_df = target_routes[target_routes['线路号'] == route_id]
+
+    # 提取 (车辆编号 -> 驾驶员编号) 对应关系并去重
+    driver_info = current_route_df[['车辆编号', '驾驶员编号']].drop_duplicates()
+
+    # 构造文件名
+    file_name = f"{int(route_id)}.txt"
+    # 构造相对路径
+    relative_path = os.path.join(output_folder, file_name)
+    # 获取绝对路径（打印要求）
+    absolute_path = os.path.abspath(relative_path)
+
+    try:
+        with open(relative_path, 'w', encoding='utf-8') as f:
+            # 写入表头信息
+            f.write(f"线路号: {int(route_id)}\n")
+            f.write("车辆编号 驾驶员编号\n")
+
+            # 遍历写入数据
+            for _, row in driver_info.iterrows():
+                f.write(f"{int(row['车辆编号'])}  {int(row['驾驶员编号'])}\n")
+
+        # 打印完整生成路径，确认输出成功
+        print(f"成功导出线路 {int(route_id)} -> {absolute_path}")
+
+    except Exception as e:
+        print(f"写入线路 {int(route_id)} 时出错: {e}")
+
+print("\n--- 任务 5：所有线路驾驶员信息导出完毕 ---")
