@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # 1. 读取数据
 # 针对你提供的报错（列数为1），尝试显式指定分隔符并处理可能的编码问题
@@ -130,3 +131,78 @@ print("\n--- 任务2(b) 可视化图表已保存为 hour_distribution.png ---")
 
 # 展示图像（可选）
 plt.show()
+
+
+# 解决中文字体问题的通用配置
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS']
+plt.rcParams['axes.unicode_minus'] = False
+
+
+# --- 任务3：线路站点分析 ---
+
+def analyze_route_stops(df, route_col='线路号', stops_col='ride_stops'):
+    """
+    计算各线路乘客的平均搭乘站点数及其标准差。
+    Parameters
+    ----------
+    df : pd.DataFrame  预处理后的数据集
+    route_col : str    线路号列名
+    stops_col : str    搭乘站点数列名
+    Returns
+    -------
+    pd.DataFrame  包含列：线路号、mean_stops、std_stops，按 mean_stops 降序排列
+    """
+    # 使用 groupby 聚合计算均值和标准差
+    route_stats = df.groupby(route_col)[stops_col].agg(['mean', 'std']).reset_index()
+
+    # 重命名列名
+    route_stats.columns = [route_col, 'mean_stops', 'std_stops']
+
+    # 按 mean_stops 降序排列
+    route_stats = route_stats.sort_values(by='mean_stops', ascending=False)
+
+    return route_stats
+
+
+# 1. 调用函数并打印结果（前10行）
+route_analysis_result = analyze_route_stops(df)
+print("\n--- 任务3：线路平均搭乘站点数统计（前10行） ---")
+print(route_analysis_result.head(10))
+
+# 2. 使用 seaborn 水平条形图可视化
+# 筛选前15条线路的原始数据用于绘制带误差棒的图
+top_15_ids = route_analysis_result.head(15)['线路号'].tolist()
+plot_df = df[df['线路号'].isin(top_15_ids)].copy()
+
+# 将线路号转为字符串，确保 y 轴作为分类标签处理
+plot_df['线路号'] = plot_df['线路号'].astype(str)
+# 确立排序顺序（字符串格式）
+order_list = [str(x) for x in top_15_ids]
+
+plt.figure(figsize=(10, 8))
+
+# 绘制水平条形图
+# 修正 palette 警告：将 y 赋值给 hue 并设置 legend=False
+sns.barplot(
+    data=plot_df,
+    y='线路号',
+    x='ride_stops',
+    hue='线路号',
+    order=order_list,
+    palette='Blues_d',
+    errorbar='sd',  # 显示标准差
+    capsize=0.3,
+    legend=False  # 移除多余图例
+)
+
+# 设置图表细节
+plt.title('前15条平均搭乘站点数最高的线路', fontsize=14)
+plt.xlabel('平均搭乘站点数', fontsize=12)
+plt.ylabel('线路号', fontsize=12)
+plt.xlim(0, None)  # x 轴范围从 0 起始
+
+# 保存图像
+plt.tight_layout()
+plt.show()
+plt.savefig('route_stops.png', dpi=150)
+print("\n--- 任务3：可视化图表已保存为 route_stops.png ---")
