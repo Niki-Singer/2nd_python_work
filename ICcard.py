@@ -206,3 +206,53 @@ plt.tight_layout()
 plt.show()
 plt.savefig('route_stops.png', dpi=150)
 print("\n--- 任务3：可视化图表已保存为 route_stops.png ---")
+
+
+# --- 任务4：高峰小时系数 (PHF) 计算 (修正版) ---
+
+print("\n--- 任务4：高峰小时系数计算 ---")
+
+# 1. 自动寻找全天刷卡量最大的小时 (高峰小时)
+peak_hour = hour_counts.idxmax()
+peak_hour_count = int(hour_counts.max())
+
+print(f"高峰小时：{peak_hour:02d}:00 ~ {peak_hour+1:02d}:00，刷卡量：{peak_hour_count} 次")
+
+# 2. 筛选出高峰小时内的所有刷卡数据
+peak_data = pickup_df[pickup_df['hour'] == peak_hour].copy()
+
+# 确保“交易时间”是 datetime 类型并设为索引
+peak_data['交易时间'] = pd.to_datetime(peak_data['交易时间'])
+peak_data.set_index('交易时间', inplace=True)
+
+# 3. 5分钟粒度统计 (PHF5)
+# 将 '5T' 改为 '5min' 以兼容新版 Pandas
+five_min_counts = peak_data.resample('5min').size()
+
+# 找出最大5分钟刷卡量及其对应时间段
+max_5min_val = five_min_counts.max()
+max_5min_start = five_min_counts.idxmax()
+max_5min_end = max_5min_start + pd.Timedelta(minutes=5)
+
+# 计算 PHF5
+phf5 = peak_hour_count / (12 * max_5min_val)
+
+print(f"最大5分钟刷卡量（{max_5min_start.strftime('%H:%M')}~{max_5min_end.strftime('%H:%M')}）：{max_5min_val} 次")
+print(f"PHF5  = {peak_hour_count} / (12 × {max_5min_val}) = {phf5:.4f}")
+
+# 4. 15分钟粒度统计 (PHF15)
+# 将 '15T' 改为 '15min' 以兼容新版 Pandas
+fifteen_min_counts = peak_data.resample('15min').size()
+
+# 找出最大15分钟刷卡量及其对应时间段
+max_15min_val = fifteen_min_counts.max()
+max_15min_start = fifteen_min_counts.idxmax()
+max_15min_end = max_15min_start + pd.Timedelta(minutes=15)
+
+# 计算 PHF15
+phf15 = peak_hour_count / (4 * max_15min_val)
+
+print(f"最大15分钟刷卡量（{max_15min_start.strftime('%H:%M')}~{max_15min_end.strftime('%H:%M')}）：{max_15min_val} 次")
+print(f"PHF15 = {peak_hour_count} / ( 4 × {max_15min_val}) = {phf15:.4f}")
+
+# --- 任务4 完成 ---
